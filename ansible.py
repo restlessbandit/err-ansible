@@ -75,6 +75,7 @@ class Ansible(BotPlugin):
         """
 
         _from = mess
+
         inventory_file = "/".join([self.config['INVENTORY_DIR'], inventory])
         playbook_file = "/".join([self.config['PLAYBOOK_DIR'], playbook])
         ssh_key = self.config['ANSIBLE_SSH_KEY']
@@ -177,7 +178,8 @@ class Ansible(BotPlugin):
             self.log.debug("Processing task: {}; status: {}, "
                            "result:\n{}".format(uuid, status, result))
             if status in ['finished', 'failed'] and result:
-                result_markdown = "```\n{result}\n```".format(result=result.decode("utf-8"))
+                # result_markdown = "```\n{result}\n```".format(result=result.decode("utf-8"))
+                result_markdown = "```\n{}\n```".format(result)
                 if self._bot.mode == 'slack':
                     card_color = 'green'
                     if status != 'finished': card_color = 'red'
@@ -188,7 +190,7 @@ class Ansible(BotPlugin):
                                    fields=(('COMMAND', str(_msg)),))
                 else:
                     self.send_templated(author, 'task_info',
-                                        {'uuid': uuid, 'status': status, 'task_info': result_markdown})
+                                        {'uuid': uuid, 'status': status, 'task_info': result})
                 del tasklist[uuid]
                 self['tasks'] = tasklist
             elif status == 'started':
