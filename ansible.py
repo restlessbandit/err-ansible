@@ -76,8 +76,8 @@ class Ansible(BotPlugin):
 
         _from = mess
 
-        inventory_file = "/".join([self.config['INVENTORY_DIR'], inventory])
-        playbook_file = "/".join([self.config['PLAYBOOK_DIR'], playbook])
+        inventory_file = path.join(self.config['INVENTORY_DIR'], inventory)
+        playbook_file = path.join(self.config['PLAYBOOK_DIR'], playbook)
         ssh_key = self.config['ANSIBLE_SSH_KEY']
         remote_user = self.config['ANSIBLE_REMOTE_USER']
         ansible_bin = path.join(self.config['ANSIBLE_BIN_DIR'],
