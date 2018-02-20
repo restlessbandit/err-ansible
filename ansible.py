@@ -5,6 +5,8 @@ from os import path
 from lib import utils, tasks
 from itertools import chain
 import argparse
+from redis import ConnectionError, Redis
+from rq import Queue
 
 CONFIG_TEMPLATE = {'INVENTORY_DIR': u"/etc/ansible/inventory",
                    'PLAYBOOK_DIR': u"/etc/ansible/playbooks",
@@ -25,6 +27,8 @@ class Ansible(BotPlugin):
         # array of task UUIDs for tasks.task_poller() to watch
         super(Ansible, self).activate()
         self.start_poller(5, self.task_poller)
+        self.redis_conn = Redis('redis', 6379)
+        self.q = Queue('ansible', connection=self.redis_conn)
 
     def configure(self, configuration):
         """
@@ -82,6 +86,7 @@ class Ansible(BotPlugin):
         remote_user = self.config['ANSIBLE_REMOTE_USER']
         ansible_bin = path.join(self.config['ANSIBLE_BIN_DIR'],
                                 u'ansible-playbook')
+
         # path come from "os" module
         if not path.isfile(inventory_file) or not path.isfile(playbook_file):
             return "*ERROR*: inventory/playbook file not found (was looking for \
@@ -101,7 +106,6 @@ class Ansible(BotPlugin):
         """
         Lists available playbooks/inventory files
         """
-
         playbooks = []
         inventories = []
         backend = self._bot.mode
@@ -157,7 +161,7 @@ class Ansible(BotPlugin):
 
         if not uuid:
             return "Listing all jobs not implemented yet, please specify UUID of a job"
-        (result, status) = tasks.get_task_info(uuid)
+        (result, status) = tasks.get_task_info(self, uuid)
         return {'uuid': uuid, 'status': status, 'task_info': result}
 
     def task_poller(self):
@@ -174,7 +178,7 @@ class Ansible(BotPlugin):
             _msg = tasklist[uuid]
             self.log.debug(_msg)
             author = _msg.frm
-            (result, status) = tasks.get_task_info(uuid)
+            (result, status) = tasks.get_task_info(self, uuid)
             self.log.debug("Processing task: {}; status: {}, "
                            "result:\n{}".format(uuid, status, result))
             if status in ['finished', 'failed'] and result:

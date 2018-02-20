@@ -1,11 +1,7 @@
 from subprocess import check_output, STDOUT, CalledProcessError
 import pickle
 pickle.HIGHEST_PROTOCOL = 2
-from rq import Queue, use_connection
 from redis import ConnectionError
-
-use_connection()
-Q = Queue('ansible')
 
 def run_task(bot, cmd, _from, timeout = 180):
     """
@@ -17,7 +13,7 @@ def run_task(bot, cmd, _from, timeout = 180):
     bot.log.debug("Running {}".format(cmd))
     async = True
     try:
-        task = Q.enqueue(check_output, cmd, stderr=STDOUT,
+        task = bot.q.enqueue(check_output, cmd, stderr=STDOUT,
                          timeout=timeout, ttl=60)
         tasklist = bot['tasks']
         tasklist[task.get_id()] = _from
@@ -26,9 +22,13 @@ def run_task(bot, cmd, _from, timeout = 180):
     except ConnectionError:
         bot.log.error("Error connecting to Redis, falling back to synchronous execution")
         async = False
+    except Exception as e:
+        bot.log.error(e)
+
     if not async:
         # notify also chatrooms and/or bot admins
-        bot.send(_from, "Running the task synchronously, whole bot blocked now, please wait.")
+        # FIXME below bot.send() raises an error for not using an Identifier class where the _from parameter is printed
+        #bot.send(_from, "Running the task synchronously, whole bot blocked now, please wait.")
         try:
             raw_result = check_output(cmd, stderr=STDOUT)
         except CalledProcessError as exc:
@@ -37,12 +37,12 @@ def run_task(bot, cmd, _from, timeout = 180):
             raw_result = "*ERROR*: ansible-playbook command not found"
         return raw_result
 
-def get_task_info(uuid):
+def get_task_info(bot, uuid):
     """
     Gets task info by it's UUID
     """
 
-    task = Q.fetch_job(uuid)
+    task = bot.q.fetch_job(uuid)
     try:
       res = task.result
       status = task.status
