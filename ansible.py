@@ -9,10 +9,18 @@ from redis import ConnectionError, Redis
 from rq import Queue
 
 CONFIG_TEMPLATE = {'INVENTORY_DIR': u"/etc/ansible/inventory",
+                   'DEFAULT_INVENTORY_FILE': None,
                    'PLAYBOOK_DIR': u"/etc/ansible/playbooks",
                    'ANSIBLE_SSH_KEY': u"/root/.ssh/id_rsa.pub",
                    'ANSIBLE_REMOTE_USER': u"root",
-                   'ANSIBLE_BIN_DIR': u'/usr/bin'}
+                   'ANSIBLE_BIN_DIR': u'/usr/bin',
+                   'REDIS_HOST': u'localhost',
+                   'REDIS_PORT': 6379,
+                   'REDIS_PASSWORD': None,
+                   'TASK_QUEUE_NAME': u'ansible'}
+
+# When DEFAULT_INVENTORY_FILE has a value it should be a unicode string u''
+# When REDIS_PASSWORD has a value it should be a unicode string u''
 
 class Ansible(BotPlugin):
     """
@@ -27,8 +35,8 @@ class Ansible(BotPlugin):
         # array of task UUIDs for tasks.task_poller() to watch
         super(Ansible, self).activate()
         self.start_poller(5, self.task_poller)
-        self.redis_conn = Redis('redis', 6379)
-        self.q = Queue('ansible', connection=self.redis_conn)
+        self.redis_connect()
+        self.task_queue_create()
 
     def configure(self, configuration):
         """
@@ -205,3 +213,27 @@ class Ansible(BotPlugin):
                 del tasklist[uuid]
                 self['tasks'] = tasklist
 
+
+    def redis_connect(self):
+        host = self.config['REDIS_HOST']
+        port = self.config['REDIS_PORT']
+        password = self.config['REDIS_PASSWORD']
+
+        try:
+            if password is not None and password != '':
+                self.redis_conn = Redis(host=host, port=port, password=password)
+
+            else:
+                self.redis_conn = Redis(host, port)
+        except ConnectionError:
+            self.log.error("Failed Redis Connection")
+        except Exception as e:
+            self.log.error(e)
+
+    def task_queue_create(self):
+        queue_name = self.config['TASK_QUEUE_NAME']
+
+        try:
+            self.q = Queue(queue_name, connection=self.redis_conn)
+        except Exception as e:
+            bot.log.error(e)
