@@ -96,9 +96,10 @@ class Ansible(BotPlugin):
                                 u'ansible-playbook')
 
         # path come from "os" module
-        if not path.isfile(inventory_file) or not path.isfile(playbook_file):
-            return "*ERROR*: inventory/playbook file not found (was looking for \
-                    {} {})".format(inventory_file, playbook_file)
+        # files should be checked by the ansible worker not the plugin
+#        if not path.isfile(inventory_file) or not path.isfile(playbook_file):
+#            return "*ERROR*: inventory/playbook file not found (was looking for \
+#                    {} {})".format(inventory_file, playbook_file)
         ansible_cmd = [ansible_bin, '-u', remote_user, '--private-key', ssh_key,
                        '-v', '-D', '-i', inventory_file, playbook_file]
         if variables:
@@ -146,9 +147,10 @@ class Ansible(BotPlugin):
                                 u'ansible')
         self.log.debug("Full path to ansible command is: %s" % ansible_bin)
         # path come from "os" module
-        if not path.isfile(inventory_file):
-            return "*ERROR*: inventory file not found (was looking for \
-                    {})".format(inventory_file)
+        # files should be checked by the ansible worker not the plugin
+#        if not path.isfile(inventory_file):
+#            return "*ERROR*: inventory file not found (was looking for \
+#                    {})".format(inventory_file)
         ansible_cmd = [ansible_bin, host, '-u', remote_user, '--private-key', ssh_key,
                        '-v', '-i', inventory_file, '-m']
         if command == 'ping':
